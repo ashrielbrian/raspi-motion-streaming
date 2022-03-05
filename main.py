@@ -40,17 +40,13 @@ class StreamingOutput(object):
 
             # New frame, copy the existing buffer's content and notify all
             # clients it's available
-            try:
-                full_frame = self.buffer.getvalue()
-                self.frame = motion.get_motion_frame(full_frame)
-            except Exception as e:
-                print(e)
-                self.error = (True, e)
-                raise MotionFrameException(output.error[1])
 
             self.buffer.truncate()
             with self.condition:
                 self.frame = self.buffer.getvalue()
+
+                # runs the motion detection algorithm
+                self.frame = motion.get_motion_frame(self.frame)
                 self.condition.notify_all()
             self.buffer.seek(0)
 

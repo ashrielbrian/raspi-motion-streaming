@@ -14,6 +14,7 @@ with open("conf.json", "r") as f:
 avg = None
 last_uploaded = datetime.datetime.now()
 motion_counter = 0
+MOTION_TEXT = "Motion detected"
 
 
 def get_motion_frame(frame_bytes: bytes):
@@ -24,13 +25,11 @@ def get_motion_frame(frame_bytes: bytes):
         return bytes("", "utf-8")
     # load as PIL image from bytes
     image = Image.open(io.BytesIO(frame_bytes))
-    # frame = image.array
-    # image = Image.frombytes('RGB', (640, 480), frame_bytes)
     frame = np.asarray(image)
     print(f"Frame loaded with size: {frame.shape}..")
 
     timestamp = datetime.datetime.now()
-    text = "unoccupied"
+    text = "None"
 
     # resize frame, convert to grayscale and blur
     frame = imutils.resize(frame, width=500)
@@ -63,13 +62,13 @@ def get_motion_frame(frame_bytes: bytes):
         # compute the bounding box for the contour, draw it on the frame, and update the text
         (x, y, w, h) = cv2.boundingRect(c)
         cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
-        text = "Occupied"
+        text = MOTION_TEXT
 
     # draw the text and timestamp on the frame
     ts = timestamp.strftime("%A %d %B %Y %I:%M:%S%p")
     cv2.putText(
         frame,
-        f"Room Status: {text}",
+        f"Status: {text}",
         (10, 20),
         cv2.FONT_HERSHEY_SIMPLEX,
         0.5,
@@ -85,9 +84,10 @@ def get_motion_frame(frame_bytes: bytes):
         (0, 0, 255),
         1,
     )
-
+    frame = imutils.resize(frame, width=640)
+    print(f"New size of frame before saving: {frame.shape}")
     frame = Image.fromarray(frame)
-    if text == "Occupied":
+    if text == MOTION_TEXT:
         # check to see if enough time has passed between saves
         if (timestamp - last_uploaded).seconds >= conf["min_upload_seconds"]:
             motion_counter += 1
@@ -103,4 +103,7 @@ def get_motion_frame(frame_bytes: bytes):
     else:
         motion_counter = 0
 
-    return frame.tobytes()
+    buf = io.BytesIO()
+    frame.save(buf, "JPEG")
+    buf.seek(0)
+    return buf.getvalue()
