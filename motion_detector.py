@@ -7,7 +7,7 @@ from PIL import Image
 import logging
 import numpy as np
 
-with open('conf.json', 'r') as f:
+with open("conf.json", "r") as f:
     conf = json.load(f)
 
 
@@ -15,9 +15,9 @@ avg = None
 last_uploaded = datetime.datetime.now()
 motion_counter = 0
 
+
 def get_motion_frame(frame_bytes: bytes):
-    print('Geting motion frame..')
-    print(f'{type(frame_bytes)}, {len(frame_bytes)}')
+    print(f"Geting motion frame of byte length: {len(frame_bytes)}")
     global avg, motion_counter, last_uploaded
 
     if len(frame_bytes) == 0:
@@ -27,29 +27,29 @@ def get_motion_frame(frame_bytes: bytes):
     # frame = image.array
     # image = Image.frombytes('RGB', (640, 480), frame_bytes)
     frame = np.asarray(image)
-    logging.info(f'Frame loaded with size: {frame.shape} of type {type(frame)}..')
+    print(f"Frame loaded with size: {frame.shape}..")
 
     timestamp = datetime.datetime.now()
-    text = 'unoccupied'
+    text = "unoccupied"
 
     # resize frame, convert to grayscale and blur
     frame = imutils.resize(frame, width=500)
     gray = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
     gray = cv2.GaussianBlur(gray, (21, 21), 0)
-    logging.info(f'Successfully resized, grayscaled, blurred. New size: {gray.shape}')
+    print(f"Successfully resized, grayscaled, blurred. New size: {gray.shape}")
 
     # if the average frame is None, initialize it
     if avg is None:
-        print('[INFO]: starting background model...')
+        print("[INFO]: starting background model...")
         avg = gray.copy().astype(float)
 
     # accumulate the weighted average between the current frame and
-	# previous frames, then compute the difference between the current
-	# frame and running average
+    # previous frames, then compute the difference between the current
+    # frame and running average
     cv2.accumulateWeighted(gray, avg, 0.5)
     frame_delta = cv2.absdiff(gray, cv2.convertScaleAbs(avg))
 
-    thresh = cv2.threshold(frame_delta, conf['delta_thresh'], 255, cv2.THRESH_BINARY)[1]
+    thresh = cv2.threshold(frame_delta, conf["delta_thresh"], 255, cv2.THRESH_BINARY)[1]
     thresh = cv2.dilate(thresh, None, iterations=2)
 
     cnts = cv2.findContours(thresh.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -57,9 +57,9 @@ def get_motion_frame(frame_bytes: bytes):
 
     for c in cnts:
         # if contours is too small, ignore
-        if cv2.contourArea(c) < conf['min_area']:
+        if cv2.contourArea(c) < conf["min_area"]:
             continue
-        
+
         # compute the bounding box for the contour, draw it on the frame, and update the text
         (x, y, w, h) = cv2.boundingRect(c)
         cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
@@ -67,36 +67,40 @@ def get_motion_frame(frame_bytes: bytes):
 
     # draw the text and timestamp on the frame
     ts = timestamp.strftime("%A %d %B %Y %I:%M:%S%p")
-    cv2.putText(frame, f"Room Status: {text}", (10, 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
-    cv2.putText(frame, ts, (10, frame.shape[0] - 10), cv2.FONT_HERSHEY_SIMPLEX,
-		0.35, (0, 0, 255), 1)
+    cv2.putText(
+        frame,
+        f"Room Status: {text}",
+        (10, 20),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.5,
+        (0, 0, 255),
+        2,
+    )
+    cv2.putText(
+        frame,
+        ts,
+        (10, frame.shape[0] - 10),
+        cv2.FONT_HERSHEY_SIMPLEX,
+        0.35,
+        (0, 0, 255),
+        1,
+    )
 
     frame = Image.fromarray(frame)
-    if text == 'Occupied':
+    if text == "Occupied":
         # check to see if enough time has passed between saves
         if (timestamp - last_uploaded).seconds >= conf["min_upload_seconds"]:
             motion_counter += 1
 
             # check to see if num of frames with consistent motion is high enough
             # then save to file
-            if motion_counter >= conf['min_motion_frames']:
-                frame.save(f'data/{ts}.jpeg')
+            if motion_counter >= conf["min_motion_frames"]:
+                frame.save(f"data/{ts}.jpeg")
 
                 # update the last uploaded timestamp and reset motion counter
                 motion_counter = 0
                 last_uploaded = timestamp
     else:
         motion_counter = 0
-            
 
     return frame.tobytes()
-
-
-
-
-
-
-
-
-
-

@@ -23,8 +23,10 @@ PAGE = """\
 </html>
 """
 
+
 class MotionFrameException(Exception):
     pass
+
 
 class StreamingOutput(object):
     def __init__(self):
@@ -45,13 +47,12 @@ class StreamingOutput(object):
                 print(e)
                 self.error = (True, e)
                 raise MotionFrameException(output.error[1])
-            
+
             self.buffer.truncate()
             with self.condition:
                 self.frame = self.buffer.getvalue()
                 self.condition.notify_all()
             self.buffer.seek(0)
-
 
         return self.buffer.write(buf)
 
@@ -103,12 +104,12 @@ class StreamingServer(socketserver.ThreadingMixIn, server.HTTPServer):
     daemon_threads = True
 
 
-if __name__ == '__main__':
-    with open('conf.json', 'r') as f:
-        conf = json.load(f)    
+if __name__ == "__main__":
+    with open("conf.json", "r") as f:
+        conf = json.load(f)
 
     res = f"{conf['resolution'][0]}x{conf['resolution'][1]}"
-    with picamera.PiCamera(resolution=res, framerate=conf['fps']) as camera:
+    with picamera.PiCamera(resolution=res, framerate=conf["fps"]) as camera:
         output = StreamingOutput()
         # Uncomment the next line to change your Pi's Camera rotation (in degrees)
         # camera.rotation = 90
