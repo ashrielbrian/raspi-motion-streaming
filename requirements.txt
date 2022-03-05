@@ -1,0 +1,4 @@
+picamera==1.13
+numpy==1.21.4
+opencv-python==4.5.4.60
+scipy==1.7.3
